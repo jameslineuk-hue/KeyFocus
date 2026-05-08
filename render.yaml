@@ -1,16 +1,7 @@
 services:
   - type: web
     name: keyfocus
-    env: static
-    staticPublishPath: .
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
     pullRequestPreviewsEnabled: true
-    routes:
-      - type: redirect
-        source: /
-        destination: /index.html
-      - type: rewrite
-        source: /details
-        destination: /details.html
-      - type: rewrite
-        source: /generate
-        destination: /generate.html

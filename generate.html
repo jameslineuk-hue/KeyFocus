@@ -18,7 +18,8 @@
       <p class="intro">
         Generates a random KeyFocus code and your shareable finder link.
         Profiles are merged from <code>data/entries.json</code> (deployed list) plus this browser&apos;s saved
-        entries for quick local testing.
+        entries for quick local testing. When the local Node server is running, new entries are also written to
+        <code>data/entries.json</code>.
       </p>
 
       <form id="gen-form" class="stack-form">
@@ -48,9 +49,8 @@
           <button type="button" id="print-tag" class="secondary hidden">Print this tag</button>
         </div>
         <p class="muted">
-          For a live site, add the JSON below to <code>data/entries.json</code> alongside existing entries,
-          upload, and invalidate cache if needed. This page also saves a copy in your browser so
-          <code>details.html</code> works locally without editing files.
+          This page saves a copy in your browser so <code>details.html</code> works locally without editing files.
+          If the local save API is running, it also writes directly to <code>data/entries.json</code>.
         </p>
         <pre id="out-json" class="json-snippet" tabindex="0"></pre>
         <button type="button" id="copy-json" class="secondary">Copy JSON</button>
@@ -100,7 +100,22 @@
         var printTag = document.getElementById("print-tag");
         var copyFeedback = document.getElementById("copy-feedback");
 
-        function showProfileResult(code, name, phone) {
+        async function persistEntry(code, name, phone) {
+          var payload = { code: code, name: name, phone: phone };
+          try {
+            var res = await fetch("/api/entries", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error("save failed");
+            return true;
+          } catch (_) {
+            return false;
+          }
+        }
+
+        function showProfileResult(code, name, phone, savedToFile) {
           var rel = "details.html?code=" + encodeURIComponent(code);
           var absolute = new URL(rel, window.location.href).href;
 
@@ -122,6 +137,12 @@
 
           printTag.classList.remove("hidden");
           result.classList.remove("hidden");
+          if (savedToFile) {
+            copyFeedback.textContent = "Saved to data/entries.json and browser storage.";
+          } else {
+            copyFeedback.textContent = "Saved in browser only. Run node server.js for file saves.";
+          }
+          copyFeedback.classList.remove("hidden");
           result.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
 
@@ -139,7 +160,8 @@
             if (!existing[code]) break;
           }
           window.KeyFocus.saveLocalEntry(code, { name: name, phone: phone });
-          showProfileResult(code, name, phone);
+          var savedToFile = await persistEntry(code, name, phone);
+          showProfileResult(code, name, phone, savedToFile);
         });
 
         document.getElementById("copy-json").addEventListener("click", function () {
@@ -188,7 +210,7 @@
         }
 
         if (editForm) {
-          editForm.addEventListener("submit", function (ev) {
+          editForm.addEventListener("submit", async function (ev) {
             ev.preventDefault();
             var fd = new FormData(editForm);
             var rawCode = (fd.get("code") || "").toString();
@@ -197,7 +219,8 @@
             var phone = (fd.get("phone") || "").toString().trim();
             if (!code || !name || !phone) return;
             window.KeyFocus.saveLocalEntry(code, { name: name, phone: phone });
-            showProfileResult(code, name, phone);
+            var savedToFile = await persistEntry(code, name, phone);
+            showProfileResult(code, name, phone, savedToFile);
           });
         }
       })();
