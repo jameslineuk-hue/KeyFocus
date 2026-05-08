@@ -1,0 +1,306 @@
+* {
+  box-sizing: border-box;
+}
+
+.hidden {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(135deg, #f3f7ff 0%, #e9f1ff 100%);
+  color: #1a1f36;
+  grid-template-rows: auto 1fr;
+  align-content: start;
+  padding: 1rem 0 2rem;
+}
+
+.top-nav {
+  width: min(92vw, 680px);
+  margin: 0 auto 0.75rem;
+  font-size: 0.95rem;
+  color: #4b5a89;
+}
+
+.top-nav a {
+  color: #1f3bb3;
+  text-decoration: none;
+}
+
+.top-nav a:hover,
+.top-nav a:focus {
+  text-decoration: underline;
+}
+
+.top-nav .brand {
+  font-weight: 700;
+  color: #1a1f36;
+}
+
+.top-nav .sep {
+  margin: 0 0.35rem;
+  opacity: 0.5;
+}
+
+.card {
+  width: min(92vw, 680px);
+  background: #ffffff;
+  border: 1px solid #dbe5ff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 10px 25px rgba(26, 31, 54, 0.1);
+}
+
+h1 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 2rem;
+}
+
+.intro {
+  margin-top: 0;
+  color: #36405f;
+}
+
+.lead {
+  font-size: 1.08rem;
+  line-height: 1.55;
+  color: #36405f;
+}
+
+.muted {
+  color: #4b5a89;
+}
+
+.small {
+  font-size: 0.9rem;
+}
+
+.checklist {
+  margin: 1.25rem 0 0;
+  padding-left: 1.2rem;
+  line-height: 1.55;
+}
+
+.checklist strong {
+  color: #1a1f36;
+}
+
+.panel.alert-border {
+  border: 1px solid #ffb4a8;
+  background: #fff8f6;
+}
+
+.stack-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.stack-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: #1a1f36;
+  font-size: 0.95rem;
+}
+
+.stack-form input {
+  font: inherit;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #cfd8f7;
+  border-radius: 8px;
+}
+
+.stack-form input:focus {
+  outline: 2px solid #8fa8ff;
+  outline-offset: 2px;
+}
+
+.stack-form button,
+.secondary {
+  font: inherit;
+  cursor: pointer;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: none;
+}
+
+.stack-form button {
+  background: #1f3bb3;
+  color: #fff;
+}
+
+.stack-form button:hover {
+  background: #182f92;
+}
+
+.secondary {
+  margin-top: 0.65rem;
+  background: #e9eeff;
+  color: #1a1f36;
+}
+
+.secondary:hover {
+  background: #dbe5ff;
+}
+
+.result-panel {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #dbe5ff;
+}
+
+.tag-preview {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.tag-card {
+  border: 1px solid #dbe5ff;
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem 0.9rem;
+  background: #fdfdfd;
+  width: 220px;
+  text-align: center;
+}
+
+.tag-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #4b5a89;
+}
+
+.tag-qr {
+  display: block;
+  margin: 0 auto 0.4rem;
+  width: 180px;
+  height: 180px;
+}
+
+.tag-url {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #1a1f36;
+}
+
+.edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+@media print {
+  body {
+    background: #fff;
+    padding: 0;
+  }
+
+  .top-nav,
+  .stack-form,
+  .json-snippet,
+  .secondary,
+  .lead,
+  .intro,
+  .checklist,
+  .next-steps,
+  .details,
+  .code-box,
+  #result > h2,
+  #result > .code-label,
+  #result > .muted {
+    display: none !important;
+  }
+
+  .card {
+    box-shadow: none;
+    border: none;
+    padding: 0.5rem;
+  }
+
+  .tag-preview {
+    margin: 0;
+    justify-content: center;
+  }
+
+  .tag-card {
+    border-color: #000;
+  }
+}
+
+.break-all {
+  word-break: break-all;
+}
+
+.json-snippet {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: #0f1428;
+  color: #dbe5ff;
+  border-radius: 10px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+a {
+  color: #1f3bb3;
+}
+
+.details p {
+  margin: 0.35rem 0;
+  font-size: 1.1rem;
+}
+
+.next-steps {
+  margin-top: 1.4rem;
+}
+
+.next-steps h2 {
+  margin-bottom: 0.55rem;
+  font-size: 1.25rem;
+}
+
+.next-steps ol {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.5;
+}
+
+.code-box {
+  margin-top: 1.4rem;
+  background: #f6f9ff;
+  border: 1px dashed #8fa8ff;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.code-label,
+.code-note {
+  margin: 0;
+}
+
+.code-value {
+  margin: 0.45rem 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #1f3bb3;
+}
+
+.code-note {
+  color: #4b5a89;
+  font-size: 0.95rem;
+}

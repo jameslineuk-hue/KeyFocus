@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KeyFocus | Create a tag profile</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="top-nav">
+      <a href="index.html">KeyFocus</a>
+      <span class="sep">·</span>
+      <a href="details.html">Found keys?</a>
+    </header>
+
+    <main class="card">
+      <h1>Create a tag profile</h1>
+      <p class="intro">
+        Generates a random KeyFocus code and your shareable finder link.
+        Profiles are merged from <code>data/entries.json</code> (deployed list) plus this browser&apos;s saved
+        entries for quick local testing.
+      </p>
+
+      <form id="gen-form" class="stack-form">
+        <label>
+          Full name
+          <input name="name" type="text" required autocomplete="name" placeholder="e.g. Sam Taylor" />
+        </label>
+        <label>
+          Phone
+          <input name="phone" type="tel" required autocomplete="tel" placeholder="e.g. 07446871772" />
+        </label>
+        <button type="submit">Generate code &amp; link</button>
+      </form>
+
+      <section id="result" class="result-panel hidden" aria-live="polite">
+        <h2>New profile</h2>
+        <p class="code-label">KeyFocus code</p>
+        <p id="out-code" class="code-value"></p>
+        <p class="muted">Share this link on the tag (QR or short URL):</p>
+        <p><a id="out-link" class="break-all" href="#"></a></p>
+        <div class="tag-preview">
+          <div class="tag-card">
+            <p class="tag-title">KeyFocus</p>
+            <img id="out-qr" class="tag-qr hidden" alt="" />
+            <p id="out-tag-url" class="tag-url break-all"></p>
+          </div>
+          <button type="button" id="print-tag" class="secondary hidden">Print this tag</button>
+        </div>
+        <p class="muted">
+          For a live site, add the JSON below to <code>data/entries.json</code> alongside existing entries,
+          upload, and invalidate cache if needed. This page also saves a copy in your browser so
+          <code>details.html</code> works locally without editing files.
+        </p>
+        <pre id="out-json" class="json-snippet" tabindex="0"></pre>
+        <button type="button" id="copy-json" class="secondary">Copy JSON</button>
+        <p id="copy-feedback" class="muted small hidden" aria-live="polite">Copied.</p>
+      </section>
+
+      <section id="edit" class="result-panel" aria-live="polite">
+        <h2>Edit existing profile</h2>
+        <p class="muted small">
+          Use an existing KeyFocus code to load and update its details. Changes are saved in this browser and a fresh
+          JSON snippet is generated so you can update <code>data/entries.json</code>.
+        </p>
+        <form id="edit-form" class="stack-form">
+          <label>
+            Code
+            <input name="code" type="text" autocomplete="off" placeholder="e.g. KF-1027" />
+          </label>
+          <label>
+            Full name
+            <input name="name" type="text" autocomplete="name" placeholder="Existing or new name" />
+          </label>
+          <label>
+            Phone
+            <input name="phone" type="tel" autocomplete="tel" placeholder="Existing or new phone" />
+          </label>
+          <div class="edit-actions">
+            <button type="button" id="edit-load" class="secondary">Load existing details</button>
+            <button type="submit">Save changes</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script src="js/keyfocus.js"></script>
+    <script>
+      (function () {
+        var form = document.getElementById("gen-form");
+        var result = document.getElementById("result");
+        var editForm = document.getElementById("edit-form");
+        var editLoad = document.getElementById("edit-load");
+
+        var outCode = document.getElementById("out-code");
+        var outLink = document.getElementById("out-link");
+        var outJson = document.getElementById("out-json");
+        var outQr = document.getElementById("out-qr");
+        var outTagUrl = document.getElementById("out-tag-url");
+        var printTag = document.getElementById("print-tag");
+        var copyFeedback = document.getElementById("copy-feedback");
+
+        function showProfileResult(code, name, phone) {
+          var rel = "details.html?code=" + encodeURIComponent(code);
+          var absolute = new URL(rel, window.location.href).href;
+
+          outCode.textContent = code;
+          outLink.textContent = absolute;
+          outLink.href = rel;
+
+          var snippet = {};
+          snippet[code] = { name: name, phone: phone };
+          outJson.textContent = JSON.stringify(snippet, null, 2);
+
+          outTagUrl.textContent = absolute;
+          var qrSrc =
+            "https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=" +
+            encodeURIComponent(absolute);
+          outQr.src = qrSrc;
+          outQr.alt = "QR code linking to " + absolute;
+          outQr.classList.remove("hidden");
+
+          printTag.classList.remove("hidden");
+          result.classList.remove("hidden");
+          result.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+
+        form.addEventListener("submit", async function (ev) {
+          ev.preventDefault();
+          var fd = new FormData(form);
+          var name = (fd.get("name") || "").toString().trim();
+          var phone = (fd.get("phone") || "").toString().trim();
+          if (!name || !phone) return;
+
+          var existing = await window.KeyFocus.loadAllEntries();
+          var code;
+          for (var i = 0; i < 20; i++) {
+            code = window.KeyFocus.randomFocusCode();
+            if (!existing[code]) break;
+          }
+          window.KeyFocus.saveLocalEntry(code, { name: name, phone: phone });
+          showProfileResult(code, name, phone);
+        });
+
+        document.getElementById("copy-json").addEventListener("click", function () {
+          var text = outJson.textContent;
+          if (!text) return;
+          var fb = copyFeedback;
+          var ok = function () {
+            fb.textContent = "Copied.";
+            fb.classList.remove("hidden");
+            window.setTimeout(function () {
+              fb.classList.add("hidden");
+            }, 1600);
+          };
+          var fail = function () {
+            fb.textContent = "Copy blocked—select the JSON and copy manually.";
+            fb.classList.remove("hidden");
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText)
+            navigator.clipboard.writeText(text).then(ok).catch(fail);
+          else fail();
+        });
+
+        if (printTag) {
+          printTag.addEventListener("click", function () {
+            window.print();
+          });
+        }
+
+        if (editLoad) {
+          editLoad.addEventListener("click", async function () {
+            var fd = new FormData(editForm);
+            var rawCode = (fd.get("code") || "").toString();
+            var code = window.KeyFocus.normalizeCode(rawCode);
+            if (!code) return;
+            var all = await window.KeyFocus.loadAllEntries();
+            var entry = all[code];
+            if (!entry) {
+              copyFeedback.textContent = "Code not found. Check the value and try again.";
+              copyFeedback.classList.remove("hidden");
+              return;
+            }
+            editForm.elements.namedItem("name").value = entry.name || "";
+            editForm.elements.namedItem("phone").value = entry.phone || "";
+            copyFeedback.classList.add("hidden");
+          });
+        }
+
+        if (editForm) {
+          editForm.addEventListener("submit", function (ev) {
+            ev.preventDefault();
+            var fd = new FormData(editForm);
+            var rawCode = (fd.get("code") || "").toString();
+            var code = window.KeyFocus.normalizeCode(rawCode);
+            var name = (fd.get("name") || "").toString().trim();
+            var phone = (fd.get("phone") || "").toString().trim();
+            if (!code || !name || !phone) return;
+            window.KeyFocus.saveLocalEntry(code, { name: name, phone: phone });
+            showProfileResult(code, name, phone);
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

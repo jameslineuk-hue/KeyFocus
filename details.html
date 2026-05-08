@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KeyFocus | Found keys</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="top-nav">
+      <a href="index.html">KeyFocus</a>
+      <span class="sep">·</span>
+      <a href="generate.html">Create a tag profile</a>
+    </header>
+
+    <main class="card">
+      <section id="state-missing" class="panel" aria-live="polite">
+        <h1>Contact details</h1>
+        <p class="intro">This page is only available with the full link from the key tag, including its KeyFocus code.</p>
+        <p class="muted">There is nothing to display without a valid code in the URL.</p>
+      </section>
+
+      <section id="state-invalid" class="panel hidden alert-border" aria-live="polite">
+        <h1>Code not recognised</h1>
+        <p class="intro">That KeyFocus code does not match a profile we have on file. Please double-check the link or tag.</p>
+      </section>
+
+      <section id="state-found" class="panel hidden">
+        <h1>Thank you</h1>
+        <p class="intro">If you found these keys, please contact:</p>
+
+        <section class="details" aria-label="Owner contact details">
+          <p><strong>Name:</strong> <span id="owner-name"></span></p>
+          <p><strong>Phone:</strong> <a id="owner-phone-link" href="#"></a></p>
+        </section>
+
+        <section class="next-steps" aria-label="What to do next">
+          <h2>What to do next</h2>
+          <ol>
+            <li>Call or text the number above.</li>
+            <li>Mention this KeyFocus code so the owner can confirm the tag.</li>
+            <li>Keep the keys safe until handover can be arranged.</li>
+          </ol>
+        </section>
+
+        <section class="code-box" aria-label="KeyFocus code">
+          <p class="code-label">KeyFocus code</p>
+          <p id="shown-code" class="code-value"></p>
+          <p class="code-note">Matched from the URL you used (<code>?code=…</code>).</p>
+        </section>
+      </section>
+    </main>
+
+    <script src="js/keyfocus.js"></script>
+    <script>
+      (async function () {
+        var missing = document.getElementById("state-missing");
+        var invalid = document.getElementById("state-invalid");
+        var found = document.getElementById("state-found");
+
+        function show(el) {
+          el.classList.remove("hidden");
+        }
+        function hide(el) {
+          el.classList.add("hidden");
+        }
+
+        var params = new URLSearchParams(window.location.search);
+        var raw = params.get("code") || "";
+        var code = window.KeyFocus.normalizeCode(raw);
+
+        if (!code) {
+          hide(invalid);
+          hide(found);
+          show(missing);
+          return;
+        }
+
+        hide(missing);
+        var all = await window.KeyFocus.loadAllEntries();
+        var entry = all[code];
+
+        if (!entry) {
+          hide(found);
+          show(invalid);
+          return;
+        }
+
+        hide(invalid);
+        show(found);
+        document.title = "KeyFocus | " + entry.name;
+
+        document.getElementById("owner-name").textContent = entry.name;
+        var display = window.KeyFocus.formatPhoneDisplay(entry.phone);
+        var tel = window.KeyFocus.telHrefFromPhone(entry.phone);
+        var link = document.getElementById("owner-phone-link");
+        link.textContent = display || entry.phone;
+        link.href = tel || "#";
+
+        document.getElementById("shown-code").textContent = code;
+      })();
+    </script>
+  </body>
+</html>
