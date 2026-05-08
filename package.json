@@ -1,9 +1,0 @@
-{
-  "name": "keyfocus",
-  "private": true,
-  "version": "1.0.0",
-  "description": "KeyFocus local static server with entry persistence API",
-  "scripts": {
-    "start": "node server.js"
-  }
-}
