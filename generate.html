@@ -17,8 +17,8 @@
       <h1>Create a tag profile</h1>
       <p class="intro">
         Generates a random KeyFocus code and your shareable finder link.
-        Profiles are merged from <code>data/entries.json</code> (deployed list) plus this browser&apos;s saved
-        entries for quick local testing.
+        When you run the Flask app (<code>python app.py</code>), profiles are saved to Supabase and merged with
+        <code>data/entries.json</code> (legacy) plus this browser&apos;s <code>localStorage</code> for offline use.
       </p>
 
       <form id="gen-form" class="stack-form">
@@ -55,8 +55,8 @@
       <section id="edit" class="result-panel" aria-live="polite">
         <h2>Edit existing profile</h2>
         <p class="muted small">
-          Use an existing KeyFocus code to load and update its details. Changes are saved in this browser and a fresh
-          JSON snippet is generated so you can update <code>data/entries.json</code>.
+          Use an existing KeyFocus code to load and update its details. Changes are saved in this browser; with the
+          Flask app running they are also written to Supabase. The JSON snippet below is optional for manual edits.
         </p>
         <form id="edit-form" class="stack-form">
           <label>
@@ -134,6 +134,7 @@
             if (!existing[code]) break;
           }
           window.KeyFocus.saveLocalEntry(code, { name: name, phone: phone });
+          await window.KeyFocus.saveRemoteEntry(code, { name: name, phone: phone });
           showProfileResult(code, name, phone);
         });
 
@@ -183,7 +184,7 @@
         }
 
         if (editForm) {
-          editForm.addEventListener("submit", function (ev) {
+          editForm.addEventListener("submit", async function (ev) {
             ev.preventDefault();
             var fd = new FormData(editForm);
             var rawCode = (fd.get("code") || "").toString();
@@ -192,6 +193,7 @@
             var phone = (fd.get("phone") || "").toString().trim();
             if (!code || !name || !phone) return;
             window.KeyFocus.saveLocalEntry(code, { name: name, phone: phone });
+            await window.KeyFocus.saveRemoteEntry(code, { name: name, phone: phone });
             showProfileResult(code, name, phone);
           });
         }

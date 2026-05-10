@@ -53,25 +53,65 @@
     return true;
   }
 
-  function mergeEntries(server, local) {
-    var out = {};
-    for (var k in server) if (Object.prototype.hasOwnProperty.call(server, k))
-      out[normalizeCode(k)] = server[k];
-    for (var k2 in local) if (Object.prototype.hasOwnProperty.call(local, k2))
-      out[normalizeCode(k2)] = local[k2];
-    return out;
+  async function fetchApiEntries() {
+    try {
+      var res = await fetch("/api/entries", { cache: "no-store" });
+      if (!res.ok) return {};
+      var data = await res.json();
+      if (!data || typeof data !== "object" || data.error) return {};
+      return data;
+    } catch (_) {
+      return {};
+    }
   }
 
-  async function loadAllEntries() {
-    var server = {};
+  async function fetchFileEntries() {
     try {
       var res = await fetch("data/entries.json", { cache: "no-store" });
-      if (res.ok) server = await res.json();
-      if (!server || typeof server !== "object") server = {};
+      if (!res.ok) return {};
+      var data = await res.json();
+      if (!data || typeof data !== "object") return {};
+      return data;
     } catch (_) {
-      server = {};
+      return {};
     }
-    return mergeEntries(server, getLocalEntries());
+  }
+
+  /**
+   * Merge order (later wins on duplicate codes): legacy file → localStorage → Supabase API.
+   * That keeps Supabase authoritative when the Flask app is deployed.
+   */
+  async function loadAllEntries() {
+    var file = await fetchFileEntries();
+    var local = getLocalEntries();
+    var api = await fetchApiEntries();
+    var merged = {};
+    for (var k in file) if (Object.prototype.hasOwnProperty.call(file, k))
+      merged[normalizeCode(k)] = file[k];
+    for (var k2 in local) if (Object.prototype.hasOwnProperty.call(local, k2))
+      merged[normalizeCode(k2)] = local[k2];
+    for (var k3 in api) if (Object.prototype.hasOwnProperty.call(api, k3))
+      merged[normalizeCode(k3)] = api[k3];
+    return merged;
+  }
+
+  async function saveRemoteEntry(code, entry) {
+    var key = normalizeCode(code);
+    if (!key || !entry || !entry.name || !entry.phone) return false;
+    try {
+      var res = await fetch("/api/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: key,
+          name: String(entry.name).trim(),
+          phone: String(entry.phone).trim(),
+        }),
+      });
+      return res.ok;
+    } catch (_) {
+      return false;
+    }
   }
 
   window.KeyFocus = {
@@ -82,6 +122,7 @@
     formatPhoneDisplay: formatPhoneDisplay,
     getLocalEntries: getLocalEntries,
     saveLocalEntry: saveLocalEntry,
+    saveRemoteEntry: saveRemoteEntry,
     loadAllEntries: loadAllEntries,
   };
 })();

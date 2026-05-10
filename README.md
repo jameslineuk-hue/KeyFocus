@@ -1,124 +1,103 @@
-## KeyFocus
+# KeyFocus
 
-KeyFocus is a tiny static-site pattern for reuniting lost keys with their owner. Each printed tag includes a URL to your deployed site and a unique KeyFocus code; when someone visits the link, the site shows only the contact details for the matching code.
+KeyFocus is a small site for reuniting lost keys with their owner. Each tag includes a URL to your site and a unique KeyFocus code; the finder page shows only the contact details for that code.
 
-This project is deliberately simple: plain HTML, CSS and vanilla JavaScript, with an optional JSON data file. It can be hosted on any static host (GitHub Pages, Netlify, Cloudflare Pages, S3/CloudFront, etc.).
+The UI is plain HTML, CSS, and JavaScript. **Authoritative data can live in Supabase** (via a tiny Flask API) while `data/entries.json` remains available as a legacy or offline fallback, and the browser can still use `localStorage` when the API is unavailable.
 
-### Project structure
+## Project structure
 
-- `index.html` — public landing page that explains how KeyFocus works, with no personal data.
-- `details.html` — “found keys” page. It reads the `?code=` query string, looks up a matching profile, and shows the owner’s name and phone number.
-- `generate.html` — profile generator used by the owner to mint new KeyFocus codes and JSON snippets.
-- `js/keyfocus.js` — shared client-side helpers for generating/normalising codes and loading entries.
-- `data/entries.json` — deployed map of KeyFocus codes to contact details.
-- `styles.css` — shared styling for all pages.
+- `index.html` — public landing page (no personal data).
+- `details.html` — finder page; reads `?code=` and displays name and phone.
+- `generate.html` — mint codes and links for tags.
+- `js/keyfocus.js` — shared helpers and loading/saving logic.
+- `data/entries.json` — optional static map of codes to profiles (used when no API is present or for seed data).
+- `app.py` — Flask app: serves the static site and implements `GET/POST /api/entries` backed by Supabase.
+- `requirements.txt` — Python dependencies (`flask`, `supabase`, `python-dotenv`, `gunicorn`).
+- `supabase/schema.sql` — table + RLS policies to run once in the Supabase SQL editor.
+- `styles.css` — shared styling.
 
-### How it works
+## Supabase setup
 
-1. A KeyFocus profile is a simple JSON entry keyed by its code, for example:
+1. In the Supabase dashboard, open **SQL** → **New query**, paste `supabase/schema.sql`, and run it.
+2. In **Project Settings → API**, copy **Project URL** and the **anon** / **publishable** API key.
+3. In the project root, copy `.env.example` to `.env` and set:
 
-   ```json
-   {
-     "KF-1027": {
-       "name": "Andrew James",
-       "phone": "07446871772"
-     }
-   }
-   ```
+   - `SUPABASE_URL` — your project URL  
+   - `SUPABASE_KEY` — your anon/publishable key (keep this secret; never commit `.env`)
 
-2. `details.html` reads a `?code=KF-1027` parameter, normalises it using `window.KeyFocus.normalizeCode`, and loads all known entries from:
-   - the deployed `data/entries.json` file (server entries), and
-   - this browser’s `localStorage` (locally generated entries).
-3. If a matching profile exists, it shows the owner’s name and a dialable phone link derived from `window.KeyFocus.telHrefFromPhone`. Otherwise it shows a friendly “code not recognised” state.
+   The Flask app uses the same key as your snippet with `create_client(...)`; tighten Row Level Security later if you expose this key elsewhere.
 
-### Generating a new tag profile
+## How entry loading works
 
-Use `generate.html` locally or on your deployed site:
+`window.KeyFocus.loadAllEntries()` merges three maps (later sources override earlier ones on duplicate codes):
 
-1. Open `generate.html` in your browser.
-2. Fill in **Full name** and **Phone** and submit the form.
-3. The page will:
-   - Generate a random KeyFocus code such as `KF-ABCD12`.
-   - Show a shareable link to `details.html?code=...` (you can turn this into a QR code for printing on the tag).
-   - Display a JSON snippet under “New profile”.
-   - Save the entry into `localStorage` for local testing.
-4. For a live site, copy the JSON snippet into `data/entries.json` on your server and redeploy/invalidate any CDN cache.
+1. `data/entries.json` (static file)
+2. This browser’s `localStorage`
+3. `GET /api/entries` when the Flask app is running (Supabase)
 
-### Editing `data/entries.json`
+So when deployed with Flask + Supabase, Supabase wins for conflicts; the static JSON file is still useful for migration or backup.
 
-`data/entries.json` is a single JSON object whose keys are KeyFocus codes. A typical file with multiple entries looks like:
+## Running locally
 
-```json
-{
-  "KF-1027": { "name": "Andrew James", "phone": "07446871772" },
-  "KF-ABCD12": { "name": "Sam Taylor", "phone": "07123456789" }
-}
+Serve over HTTP (not `file://`) so `fetch` works.
+
+### Flask + Supabase (recommended)
+
+Use a virtual environment so dependencies stay isolated:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env        # then edit with your Supabase URL and key
+python app.py
 ```
 
-- Keep the outer braces and ensure keys are unique.
-- Codes are case-insensitive on lookup but are stored in the normalised `KF-XXXXXX` form.
+Then open:
 
-### Running locally
+- `http://127.0.0.1:5000/` — home  
+- `http://127.0.0.1:5000/generate.html` — create profiles (saved to Supabase + `localStorage`)  
+- `http://127.0.0.1:5000/details.html?code=KF-1027` — finder page  
 
-Because `details.html` and `js/keyfocus.js` use `fetch("data/entries.json")`, you should serve the files over HTTP rather than opening them via the `file://` protocol.
+Friendly routes: `/generate` and `/details` also work.
 
-From the `KeyFocus` directory:
+### Static only (no Supabase)
 
-- **Python 3**
+```bash
+python -m http.server 8000
+```
 
-  ```bash
-  python -m http.server 8000
-  ```
-
-  Then open:
-  - `http://localhost:8000/index.html`
-  - `http://localhost:8000/generate.html`
-  - `http://localhost:8000/details.html?code=KF-1027`
-
-- **Node (any static server)**
-
-  ```bash
-  npx serve .
-  ```
-
-  Then open the URL it prints (for example `http://localhost:3000`).
-
-When running purely from the file system without a server, `generate.html` will still work and store profiles in `localStorage`; `details.html` will then resolve codes from local storage only.
+No `/api/entries` exists in this mode; only `data/entries.json` and `localStorage` apply.
 
 Notes:
-- The **printable QR tag** on `generate.html` loads a QR image from an external service, so you’ll need an internet connection for the QR image to render (printing still works without it, but the QR may be blank).
 
-### Deploying
+- The QR image on `generate.html` uses an external API; you need network access for the QR to load.
 
-Any static host that serves the files at a stable base URL will work:
+## Deploying (general)
 
-1. Upload the contents of this directory (including the `data/` and `js/` folders).
-2. Point your chosen domain or subdomain at the deployment.
-3. Use `generate.html` to create profiles and update `data/entries.json` as needed.
-4. Print tags that contain either the full finder URL or a QR code that encodes `https://your-domain.example/details.html?code=KF-XXXXXX`.
+1. Configure Supabase (schema + env vars) if using the API.
+2. Host the Flask app on any Python-capable platform, **or** upload only the static files for a JSON/`localStorage`-only deployment.
+3. Print tags with URLs like `https://your-domain.example/details.html?code=KF-XXXXXX` (or `/details?code=...` when using Flask routes).
 
-### Deploying to Render
+## Deploying to Render
 
-This repo now includes a `render.yaml` blueprint for a static site deployment.
+`render.yaml` defines a **Python** web service: `pip install -r requirements.txt` and `gunicorn --bind 0.0.0.0:$PORT app:app`.
 
-1. Push this project to a GitHub (or GitLab/Bitbucket) repository.
-2. In Render, click **New +** -> **Blueprint**.
-3. Connect your repo and select it.
-4. Render will detect `render.yaml` and create a static web service.
-5. Confirm deploy.
-6. After deploy, open:
-   - `https://<your-render-domain>/` (redirects to `index.html`)
-   - `https://<your-render-domain>/generate` (rewritten to `generate.html`)
-   - `https://<your-render-domain>/details?code=KF-1027` (rewritten to `details.html`)
+1. Push this repo to GitHub (or GitLab/Bitbucket).
+2. In Render: **New +** → **Blueprint** → select the repo.
+3. In the Render dashboard for the service, add **environment variables** `SUPABASE_URL` and `SUPABASE_KEY` (do not commit real keys to git).
+4. Deploy, then open your service URL with `/`, `/generate`, or `/details?code=...`.
 
-Notes:
-- The current `render.yaml` publishes the project root (`staticPublishPath: .`), which is correct for this layout.
-- `render.yaml` also defines friendly routes so you can use `/`, `/generate`, and `/details?code=...` without `.html`.
-- Update `data/entries.json` in git and redeploy whenever you add permanent profiles.
-- You can add a custom domain in Render settings once deployment is live.
+## Privacy notes
 
-### Privacy notes
+- The landing page does not expose personal data.
+- Only people with a link that includes the KeyFocus code can open the matching profile on `details.html`.
+- With Supabase enabled, contact rows live in your Supabase project; with static-only mode, data is in `data/entries.json` and optionally `localStorage` on devices that generated profiles.
 
-- The public landing page (`index.html`) never exposes any personal data.
-- Only people with a full tag link (including the KeyFocus code) can see the matching contact details.
-- All data is stored client-side in `data/entries.json` and, optionally, in the browser’s `localStorage` on devices where you generate profiles.
+## Optional: Supabase agent skills for AI tools
+
+If you use tooling that supports Cursor-style skills, you can add Supabase’s skill pack (optional):
+
+```bash
+npx skills add supabase/agent-skills
+```
